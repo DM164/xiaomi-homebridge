@@ -2,6 +2,8 @@ import { Service, PlatformAccessory, CharacteristicValue } from 'homebridge';
 
 import { ExampleHomebridgePlatform } from './platform';
 
+import * as miio from '../node_modules/mijia-io';
+
 /**
  * Platform Accessory
  * An instance of this class is created for each accessory your platform registers
@@ -49,46 +51,6 @@ export class ExamplePlatformAccessory {
     // register handlers for the Brightness Characteristic
     this.service.getCharacteristic(this.platform.Characteristic.Brightness)
       .onSet(this.setBrightness.bind(this));       // SET - bind to the 'setBrightness` method below
-
-    /**
-     * Creating multiple services of the same type.
-     *
-     * To avoid "Cannot add a Service with the same UUID another Service without also defining a unique 'subtype' property." error,
-     * when creating multiple services of the same type, you need to use the following syntax to specify a name and subtype id:
-     * this.accessory.getService('NAME') || this.accessory.addService(this.platform.Service.Lightbulb, 'NAME', 'USER_DEFINED_SUBTYPE_ID');
-     *
-     * The USER_DEFINED_SUBTYPE must be unique to the platform accessory (if you platform exposes multiple accessories, each accessory
-     * can use the same sub type id.)
-     */
-
-    // Example: add two "motion sensor" services to the accessory
-    const motionSensorOneService = this.accessory.getService('Motion Sensor One Name') ||
-      this.accessory.addService(this.platform.Service.MotionSensor, 'Motion Sensor One Name', 'YourUniqueIdentifier-1');
-
-    const motionSensorTwoService = this.accessory.getService('Motion Sensor Two Name') ||
-      this.accessory.addService(this.platform.Service.MotionSensor, 'Motion Sensor Two Name', 'YourUniqueIdentifier-2');
-
-    /**
-     * Updating characteristics values asynchronously.
-     *
-     * Example showing how to update the state of a Characteristic asynchronously instead
-     * of using the `on('get')` handlers.
-     * Here we change update the motion sensor trigger states on and off every 10 seconds
-     * the `updateCharacteristic` method.
-     *
-     */
-    let motionDetected = false;
-    setInterval(() => {
-      // EXAMPLE - inverse the trigger
-      motionDetected = !motionDetected;
-
-      // push the new value to HomeKit
-      motionSensorOneService.updateCharacteristic(this.platform.Characteristic.MotionDetected, motionDetected);
-      motionSensorTwoService.updateCharacteristic(this.platform.Characteristic.MotionDetected, !motionDetected);
-
-      this.platform.log.debug('Triggering motionSensorOneService:', motionDetected);
-      this.platform.log.debug('Triggering motionSensorTwoService:', !motionDetected);
-    }, 10000);
   }
 
   /**
@@ -98,6 +60,17 @@ export class ExamplePlatformAccessory {
   async setOn(value: CharacteristicValue) {
     // implement your own code to turn your device on/off
     this.exampleStates.On = value as boolean;
+
+    // Resolve a device, resolving the token automatically or from storage
+    miio.device({ address: '192.168.1.12', token: '560125aea1794cc3baf47fe0e3857f78' })
+      .then(device => {
+        console.log(device);
+        // Get if the light is on
+        device.setPower(value)
+          .then()
+          .catch();
+      })
+      .catch(err => console.log(err));
 
     this.platform.log.debug('Set Characteristic On ->', value);
   }
@@ -117,7 +90,18 @@ export class ExamplePlatformAccessory {
    */
   async getOn(): Promise<CharacteristicValue> {
     // implement your own code to check if the device is on
-    const isOn = this.exampleStates.On;
+    let isOn = false;
+
+    await miio.device({ address: '192.168.1.12', token: '560125aea1794cc3baf47fe0e3857f78' })
+      .then(device => {
+        console.log(device);
+        // Get if the light is on
+        device.power()
+          .then(arg => {
+            isOn = arg;
+          });
+      })
+      .catch(err => console.log(err));
 
     this.platform.log.debug('Get Characteristic On ->', isOn);
 
@@ -134,6 +118,17 @@ export class ExamplePlatformAccessory {
   async setBrightness(value: CharacteristicValue) {
     // implement your own code to set the brightness
     this.exampleStates.Brightness = value as number;
+
+    // Resolve a device, resolving the token automatically or from storage
+    miio.device({ address: '192.168.1.12', token: '560125aea1794cc3baf47fe0e3857f78' })
+      .then(device => {
+        console.log(device);
+        // Get if the light is on
+        device.setBrightness(value)
+          .then()
+          .catch();
+      })
+      .catch(err => console.log(err));
 
     this.platform.log.debug('Set Characteristic Brightness -> ', value);
   }
